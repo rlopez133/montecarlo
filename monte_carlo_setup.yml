@@ -1,0 +1,494 @@
+---
+# Playbook: Monte Carlo Insurance Risk Simulation Environment Setup
+# Description: Automates the deployment of a Jupyter notebook environment for insurance risk simulations
+- name: Setup Monte Carlo Insurance Risk Simulation Environment
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  
+  vars:
+    namespace: insurance-risk
+    app_name: risk-analytics
+    jupyter_image: quay.io/jupyter/datascience-notebook:latest
+    memory_request: 1Gi
+    memory_limit: 2Gi
+    cpu_request: 500m
+    cpu_limit: '1'
+    example_notebook_name: monte_carlo_insurance_simulation.ipynb
+    example_notebook_content: |
+      {
+        "cells": [
+          {
+            "cell_type": "markdown",
+            "metadata": {},
+            "source": [
+              "# Monte Carlo Simulation for Insurance Risk Analysis\n",
+              "\n",
+              "This notebook demonstrates a basic Monte Carlo simulation for analyzing insurance claims and risk metrics."
+            ]
+          },
+          {
+            "cell_type": "code",
+            "execution_count": null,
+            "metadata": {},
+            "source": [
+              "# Monte Carlo Simulation for Insurance Claims\n",
+              "import numpy as np\n",
+              "import pandas as pd\n",
+              "import matplotlib.pyplot as plt\n",
+              "import seaborn as sns\n",
+              "from tqdm.notebook import tqdm\n",
+              "\n",
+              "# Set random seed for reproducibility\n",
+              "np.random.seed(42)"
+            ]
+          },
+          {
+            "cell_type": "markdown",
+            "metadata": {},
+            "source": [
+              "## Define Simulation Parameters\n",
+              "\n",
+              "You can adjust these parameters to match your specific scenario."
+            ]
+          },
+          {
+            "cell_type": "code",
+            "execution_count": null,
+            "metadata": {},
+            "source": [
+              "# Simulation parameters\n",
+              "num_policies = 1000        # Number of insurance policies\n",
+              "num_simulations = 5000     # Number of Monte Carlo simulations\n",
+              "claim_probability = 0.05   # Probability of a claim occurring (5%)\n",
+              "mean_claim_amount = 5000   # Mean of claim amount in dollars\n",
+              "std_claim_amount = 3000    # Standard deviation of claim amount in dollars"
+            ]
+          },
+          {
+            "cell_type": "markdown",
+            "metadata": {},
+            "source": [
+              "## Define the Simulation Function"
+            ]
+          },
+          {
+            "cell_type": "code",
+            "execution_count": null,
+            "metadata": {},
+            "source": [
+              "def run_simulation():\n",
+              "    # Simulate whether each policy has a claim (0 or 1)\n",
+              "    claims_occurred = np.random.binomial(1, claim_probability, num_policies)\n",
+              "    \n",
+              "    # Simulate claim amounts (log-normal distribution) for policies with claims\n",
+              "    claim_amounts = np.zeros(num_policies)\n",
+              "    \n",
+              "    # Parameters for log-normal distribution to achieve desired mean and std\n",
+              "    mu = np.log(mean_claim_amount**2 / np.sqrt(std_claim_amount**2 + mean_claim_amount**2))\n",
+              "    sigma = np.sqrt(np.log(1 + std_claim_amount**2 / mean_claim_amount**2))\n",
+              "    \n",
+              "    # Generate claim amounts only for policies with claims\n",
+              "    claim_amounts[claims_occurred == 1] = np.random.lognormal(mu, sigma, sum(claims_occurred))\n",
+              "    \n",
+              "    # Total loss for the portfolio\n",
+              "    total_loss = np.sum(claim_amounts)\n",
+              "    \n",
+              "    # Additional metrics\n",
+              "    num_claims = sum(claims_occurred)\n",
+              "    avg_claim_size = np.mean(claim_amounts[claims_occurred == 1]) if num_claims > 0 else 0\n",
+              "    \n",
+              "    return total_loss, num_claims, avg_claim_size"
+            ]
+          },
+          {
+            "cell_type": "markdown",
+            "metadata": {},
+            "source": [
+              "## Run the Monte Carlo Simulations"
+            ]
+          },
+          {
+            "cell_type": "code",
+            "execution_count": null,
+            "metadata": {},
+            "source": [
+              "# Run the simulations\n",
+              "results = []\n",
+              "for _ in tqdm(range(num_simulations)):\n",
+              "    total_loss, num_claims, avg_claim_size = run_simulation()\n",
+              "    results.append({\n",
+              "        'total_loss': total_loss,\n",
+              "        'num_claims': num_claims,\n",
+              "        'avg_claim_size': avg_claim_size\n",
+              "    })\n",
+              "\n",
+              "# Convert results to DataFrame\n",
+              "results_df = pd.DataFrame(results)"
+            ]
+          },
+          {
+            "cell_type": "markdown",
+            "metadata": {},
+            "source": [
+              "## Calculate Key Risk Metrics"
+            ]
+          },
+          {
+            "cell_type": "code",
+            "execution_count": null,
+            "metadata": {},
+            "source": [
+              "# Calculate key risk metrics\n",
+              "expected_loss = results_df['total_loss'].mean()\n",
+              "var_95 = np.percentile(results_df['total_loss'], 95)  # 95% Value at Risk\n",
+              "var_99 = np.percentile(results_df['total_loss'], 99)  # 99% Value at Risk\n",
+              "tvar_95 = results_df[results_df['total_loss'] >= var_95]['total_loss'].mean()  # Tail Value at Risk (95%)\n",
+              "\n",
+              "# Display results\n",
+              "print(f\"Expected Annual Loss: ${expected_loss:,.2f}\")\n",
+              "print(f\"95% Value at Risk (VaR): ${var_95:,.2f}\")\n",
+              "print(f\"99% Value at Risk (VaR): ${var_99:,.2f}\")\n",
+              "print(f\"95% Tail Value at Risk (TVaR): ${tvar_95:,.2f}\")\n",
+              "print(f\"Average Number of Claims: {results_df['num_claims'].mean():.1f}\")\n",
+              "print(f\"Average Claim Size: ${results_df['avg_claim_size'].mean():,.2f}\")"
+            ]
+          },
+          {
+            "cell_type": "markdown",
+            "metadata": {},
+            "source": [
+              "## Visualize the Results"
+            ]
+          },
+          {
+            "cell_type": "code",
+            "execution_count": null,
+            "metadata": {},
+            "source": [
+              "# Create visualizations\n",
+              "plt.figure(figsize=(15, 10))\n",
+              "\n",
+              "# Distribution of total losses\n",
+              "plt.subplot(2, 2, 1)\n",
+              "sns.histplot(results_df['total_loss'], kde=True)\n",
+              "plt.axvline(x=expected_loss, color='r', linestyle='--', label=f'Expected Loss: ${expected_loss:,.0f}')\n",
+              "plt.axvline(x=var_95, color='g', linestyle='--', label=f'95% VaR: ${var_95:,.0f}')\n",
+              "plt.axvline(x=var_99, color='y', linestyle='--', label=f'99% VaR: ${var_99:,.0f}')\n",
+              "plt.title('Distribution of Total Portfolio Losses')\n",
+              "plt.xlabel('Total Loss ($)')\n",
+              "plt.ylabel('Frequency')\n",
+              "plt.legend()\n",
+              "\n",
+              "# Distribution of number of claims\n",
+              "plt.subplot(2, 2, 2)\n",
+              "sns.histplot(results_df['num_claims'], kde=True, discrete=True)\n",
+              "plt.axvline(x=results_df['num_claims'].mean(), color='r', linestyle='--', \n",
+              "            label=f'Avg Claims: {results_df[\"num_claims\"].mean():.1f}')\n",
+              "plt.title('Distribution of Number of Claims')\n",
+              "plt.xlabel('Number of Claims')\n",
+              "plt.ylabel('Frequency')\n",
+              "plt.legend()\n",
+              "\n",
+              "# Distribution of average claim size\n",
+              "plt.subplot(2, 2, 3)\n",
+              "sns.histplot(results_df['avg_claim_size'], kde=True)\n",
+              "plt.axvline(x=results_df['avg_claim_size'].mean(), color='r', linestyle='--', \n",
+              "            label=f'Avg Claim Size: ${results_df[\"avg_claim_size\"].mean():,.0f}')\n",
+              "plt.title('Distribution of Average Claim Size')\n",
+              "plt.xlabel('Average Claim Size ($)')\n",
+              "plt.ylabel('Frequency')\n",
+              "plt.legend()\n",
+              "\n",
+              "# Scatter plot of number of claims vs total loss\n",
+              "plt.subplot(2, 2, 4)\n",
+              "plt.scatter(results_df['num_claims'], results_df['total_loss'], alpha=0.5)\n",
+              "plt.title('Number of Claims vs Total Loss')\n",
+              "plt.xlabel('Number of Claims')\n",
+              "plt.ylabel('Total Loss ($)')\n",
+              "\n",
+              "plt.tight_layout()\n",
+              "plt.show()"
+            ]
+          },
+          {
+            "cell_type": "markdown",
+            "metadata": {},
+            "source": [
+              "## Capital Requirements Analysis"
+            ]
+          },
+          {
+            "cell_type": "code",
+            "execution_count": null,
+            "metadata": {},
+            "source": [
+              "# Additional analysis: Calculate required capital\n",
+              "confidence_levels = [0.9, 0.95, 0.99, 0.995, 0.999]\n",
+              "capital_requirements = {}\n",
+              "\n",
+              "for cl in confidence_levels:\n",
+              "    var = np.percentile(results_df['total_loss'], cl * 100)\n",
+              "    tvar = results_df[results_df['total_loss'] >= var]['total_loss'].mean()\n",
+              "    capital_requirements[cl] = {\n",
+              "        'VaR': var,\n",
+              "        'TVaR': tvar,\n",
+              "        'Required Capital (VaR)': var - expected_loss,\n",
+              "        'Required Capital (TVaR)': tvar - expected_loss\n",
+              "    }\n",
+              "\n",
+              "capital_df = pd.DataFrame(capital_requirements).T\n",
+              "print(\"\\nCapital Requirements at Different Confidence Levels:\")\n",
+              "capital_df"
+            ]
+          },
+          {
+            "cell_type": "markdown",
+            "metadata": {},
+            "source": [
+              "## Reinsurance Analysis"
+            ]
+          },
+          {
+            "cell_type": "code",
+            "execution_count": null,
+            "metadata": {},
+            "source": [
+              "# Simple reinsurance analysis\n",
+              "# Assume a simple excess-of-loss reinsurance with different attachment points\n",
+              "attachment_points = [100000, 150000, 200000, 250000, 300000]\n",
+              "reinsurance_results = {}\n",
+              "\n",
+              "for point in attachment_points:\n",
+              "    ceded_losses = [max(0, loss - point) for loss in results_df['total_loss']]\n",
+              "    retained_losses = [min(loss, point) for loss in results_df['total_loss']]\n",
+              "    \n",
+              "    reinsurance_results[point] = {\n",
+              "        'Avg Retained Loss': np.mean(retained_losses),\n",
+              "        'Avg Ceded Loss': np.mean(ceded_losses),\n",
+              "        'Max Retained Loss': np.max(retained_losses),\n",
+              "        '95% VaR (Retained)': np.percentile(retained_losses, 95),\n",
+              "        '99% VaR (Retained)': np.percentile(retained_losses, 99),\n",
+              "    }\n",
+              "\n",
+              "reinsurance_df = pd.DataFrame(reinsurance_results).T\n",
+              "print(\"\\nImpact of Different Reinsurance Attachment Points:\")\n",
+              "reinsurance_df"
+            ]
+          },
+          {
+            "cell_type": "markdown",
+            "metadata": {},
+            "source": [
+              "## Bonus: Simulation with Parameter Variations\n",
+              "\n",
+              "Let's see how changes in the parameters affect our results."
+            ]
+          },
+          {
+            "cell_type": "code",
+            "execution_count": null,
+            "metadata": {},
+            "source": [
+              "# Function to run a complete simulation with given parameters\n",
+              "def run_full_simulation(num_policies, claim_prob, mean_amount, std_amount, num_sims=1000):\n",
+              "    results = []\n",
+              "    for _ in range(num_sims):\n",
+              "        # Simulate claims\n",
+              "        claims = np.random.binomial(1, claim_prob, num_policies)\n",
+              "        \n",
+              "        # Parameters for log-normal\n",
+              "        mu = np.log(mean_amount**2 / np.sqrt(std_amount**2 + mean_amount**2))\n",
+              "        sigma = np.sqrt(np.log(1 + std_amount**2 / mean_amount**2))\n",
+              "        \n",
+              "        # Claim amounts\n",
+              "        amounts = np.zeros(num_policies)\n",
+              "        amounts[claims == 1] = np.random.lognormal(mu, sigma, sum(claims))\n",
+              "        \n",
+              "        results.append(np.sum(amounts))\n",
+              "        \n",
+              "    return {\n",
+              "        'mean': np.mean(results),\n",
+              "        'var_95': np.percentile(results, 95),\n",
+              "        'var_99': np.percentile(results, 99)\n",
+              "    }\n",
+              "\n",
+              "# Try different parameter combinations\n",
+              "param_variations = [\n",
+              "    {'num_policies': 1000, 'claim_prob': 0.05, 'mean_amount': 5000, 'std_amount': 3000},  # Base case\n",
+              "    {'num_policies': 1000, 'claim_prob': 0.10, 'mean_amount': 5000, 'std_amount': 3000},  # Higher frequency\n",
+              "    {'num_policies': 1000, 'claim_prob': 0.05, 'mean_amount': 10000, 'std_amount': 3000}, # Higher severity\n",
+              "    {'num_policies': 1000, 'claim_prob': 0.05, 'mean_amount': 5000, 'std_amount': 6000},  # Higher volatility\n",
+              "    {'num_policies': 2000, 'claim_prob': 0.05, 'mean_amount': 5000, 'std_amount': 3000}   # Larger portfolio\n",
+              "]\n",
+              "\n",
+              "variation_results = {}\n",
+              "for i, params in enumerate(param_variations):\n",
+              "    label = f\"Scenario {i+1}\"\n",
+              "    variation_results[label] = {\n",
+              "        **params,\n",
+              "        **run_full_simulation(**params, num_sims=1000)\n",
+              "    }\n",
+              "\n",
+              "# Display results of parameter variations\n",
+              "variations_df = pd.DataFrame(variation_results).T\n",
+              "print(\"\\nParameter Variation Analysis:\")\n",
+              "variations_df"
+            ]
+          }
+        ],
+        "metadata": {
+          "kernelspec": {
+            "display_name": "Python 3",
+            "language": "python",
+            "name": "python3"
+          },
+          "language_info": {
+            "codemirror_mode": {
+              "name": "ipython",
+              "version": 3
+            },
+            "file_extension": ".py",
+            "mimetype": "text/x-python",
+            "name": "python",
+            "nbconvert_exporter": "python",
+            "pygments_lexer": "ipython3",
+            "version": "3.8"
+          }
+        },
+        "nbformat": 4,
+        "nbformat_minor": 4
+      }
+
+  tasks:
+    - name: Create namespace if it doesn't exist
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name: "{{ namespace }}"
+
+    - name: Create the Jupyter deployment
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: "{{ app_name }}"
+            namespace: "{{ namespace }}"
+            labels:
+              app: "{{ app_name }}"
+          spec:
+            replicas: 1
+            selector:
+              matchLabels:
+                app: "{{ app_name }}"
+            template:
+              metadata:
+                labels:
+                  app: "{{ app_name }}"
+              spec:
+                volumes:
+                - name: notebook-data
+                  emptyDir: {}
+                - name: example-notebook
+                  configMap:
+                    name: "{{ app_name }}-notebook"
+                containers:
+                - name: jupyter
+                  image: "{{ jupyter_image }}"
+                  command: ["start-notebook.sh"]
+                  args: ["--ip=0.0.0.0", "--no-browser", "--NotebookApp.token=''", "--NotebookApp.password=''"]
+                  ports:
+                  - containerPort: 8888
+                    protocol: TCP
+                  env:
+                  - name: HOME
+                    value: /home/jovyan
+                  - name: JUPYTER_ENABLE_LAB
+                    value: "yes"
+                  resources:
+                    requests:
+                      memory: "{{ memory_request }}"
+                      cpu: "{{ cpu_request }}"
+                    limits:
+                      memory: "{{ memory_limit }}"
+                      cpu: "{{ cpu_limit }}"
+                  volumeMounts:
+                  - name: notebook-data
+                    mountPath: /home/jovyan
+                  - name: example-notebook
+                    mountPath: /home/jovyan/example
+                  lifecycle:
+                    postStart:
+                      exec:
+                        command: ["/bin/sh", "-c", "cp /home/jovyan/example/{{ example_notebook_name }} /home/jovyan/"]
+
+    - name: Create ConfigMap with example notebook
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: ConfigMap
+          metadata:
+            name: "{{ app_name }}-notebook"
+            namespace: "{{ namespace }}"
+          data:
+            "{{ example_notebook_name }}": "{{ example_notebook_content }}"
+
+    - name: Create service for Jupyter
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Service
+          metadata:
+            name: "{{ app_name }}"
+            namespace: "{{ namespace }}"
+            labels:
+              app: "{{ app_name }}"
+          spec:
+            selector:
+              app: "{{ app_name }}"
+            ports:
+              - port: 8888
+                targetPort: 8888
+                protocol: TCP
+                name: http
+            type: ClusterIP
+
+    - name: Create route for Jupyter
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: route.openshift.io/v1
+          kind: Route
+          metadata:
+            name: "{{ app_name }}"
+            namespace: "{{ namespace }}"
+            labels:
+              app: "{{ app_name }}"
+          spec:
+            to:
+              kind: Service
+              name: "{{ app_name }}"
+            port:
+              targetPort: http
+            tls:
+              termination: edge
+              insecureEdgeTerminationPolicy: Redirect
+
+    - name: Get route information
+      kubernetes.core.k8s_info:
+        api_version: route.openshift.io/v1
+        kind: Route
+        name: "{{ app_name }}"
+        namespace: "{{ namespace }}"
+      register: route_info
+
+    - name: Display route URL
+      debug:
+        msg: "The Jupyter Notebook is available at https://{{ route_info.resources[0].spec.host }}"
