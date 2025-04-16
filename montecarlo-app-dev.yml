@@ -1,0 +1,12 @@
+# Test Playbook for Development
+
+## Overview
+This is a simple test markdown file as a placeholder for the montecarlo-app-dev.yml playbook.
+
+## Purpose
+- To demonstrate the PR workflow
+- To test branch creation and file addition
+- To prepare for actual playbook content
+
+## Next Steps
+This file will be replaced with the actual Ansible playbook content when ready.
