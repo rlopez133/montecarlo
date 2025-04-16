@@ -7,7 +7,7 @@
   gather_facts: false
   
   vars:
-    namespace: insurance-risk
+    app_namespace: insurance-risk
     app_name: risk-analytics
     jupyter_image: quay.io/jupyter/datascience-notebook:latest
     memory_request: 1Gi
