@@ -23,7 +23,7 @@
           apiVersion: v1
           kind: Namespace
           metadata:
-            name: "{{ namespace }}"
+            name: "{{ app_namespace }}"
 
     - name: Create the Jupyter deployment
       kubernetes.core.k8s:
@@ -33,7 +33,7 @@
           kind: Deployment
           metadata:
             name: "{{ app_name }}"
-            namespace: "{{ namespace }}"
+            namespace: "{{ app_namespace }}"
             labels:
               app: "{{ app_name }}"
           spec:
@@ -81,7 +81,7 @@
           kind: Service
           metadata:
             name: "{{ app_name }}"
-            namespace: "{{ namespace }}"
+            namespace: "{{ app_namespace }}"
             labels:
               app: "{{ app_name }}"
           spec:
@@ -102,7 +102,7 @@
           kind: Route
           metadata:
             name: "{{ app_name }}"
-            namespace: "{{ namespace }}"
+            namespace: "{{ app_namespace }}"
             labels:
               app: "{{ app_name }}"
           spec:
@@ -120,7 +120,7 @@
         api_version: route.openshift.io/v1
         kind: Route
         name: "{{ app_name }}"
-        namespace: "{{ namespace }}"
+        namespace: "{{ app_namespace }}"
       register: route_info
 
     - name: Display route URL
